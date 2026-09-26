@@ -1,104 +1,60 @@
 /*
  * @name         LOLI Labs 自动签到
- * @description  自动捕获已登录 LOLI 的 Token，并定时签到
+ * @description  自动捕获 LOLI Authorization + 自动签到
  * @author       Eric
- * @version      2.0.0
+ * @version      3.0.0
  */
 
-const LOLI_API = "https://labs-api.loli.host/api/v1";
-const TOKEN_KEY = "LOLI_TOKEN";
+const API = "https://labs-api.loli.host/api/v1";
+const KEY = "LOLI_TOKEN";
 
-function notify(subtitle, message) {
-    $notification.post("LOLI Labs", subtitle, message);
-}
-
-function saveToken(token) {
-    if (!token) return false;
-
-    token = token
-        .replace(/^Bearer\s+/i, "")
-        .trim();
-
-    if (!token) return false;
-
-    $persistentStore.write(token, TOKEN_KEY);
-
-    console.log("LOLI Token 已保存");
-    return true;
-}
-
-function getToken() {
-    // 优先使用模块参数
-    if (typeof $argument !== "undefined" && $argument) {
-        const match = $argument.match(/(?:^|&)Token=([^&]*)/);
-
-        if (match && match[1]) {
-            const token = decodeURIComponent(match[1]).trim();
-
-            if (token) {
-                return token;
-            }
-        }
-    }
-
-    return $persistentStore.read(TOKEN_KEY);
-}
-
-function httpRequest(options) {
-    return new Promise((resolve, reject) => {
-        $httpClient[options.method.toLowerCase()](
-            options,
-            (error, response, body) => {
-                if (error) {
-                    reject(error);
-                    return;
-                }
-
-                let data;
-
-                try {
-                    data = JSON.parse(body);
-                } catch {
-                    data = body;
-                }
-
-                resolve({
-                    status: response.status,
-                    body: data
-                });
-            }
-        );
-    });
-}
-
-
-// ========================================
-// HTTP Request：捕获已经登录的 LOLI Token
-// ========================================
+// =====================================================
+// HTTP Request：捕获 LOLI 已登录请求中的 Authorization
+// =====================================================
 
 if ($script.type === "http-request") {
 
     const headers = $request.headers || {};
 
-    const authorization =
-        headers.Authorization ||
-        headers.authorization;
+    const auth =
+        headers["Authorization"] ||
+        headers["authorization"];
 
-    if (
-        authorization &&
-        /^Bearer\s+/i.test(authorization)
-    ) {
+    console.log(
+        "LOLI Request:",
+        $request.url
+    );
 
-        const token = authorization
-            .replace(/^Bearer\s+/i, "")
-            .trim();
+    if (auth) {
 
-        if (saveToken(token)) {
+        console.log(
+            "发现 Authorization"
+        );
 
-            console.log(
-                "捕获 LOLI Authorization 成功"
-            );
+        if (/^Bearer\s+/i.test(auth)) {
 
+            const token =
+                auth
+                    .replace(/^Bearer\s+/i, "")
+                    .trim();
+
+            if (token) {
+
+                $persistentStore.write(
+                    token,
+                    KEY
+                );
+
+                console.log(
+                    "LOLI Token 保存成功"
+                );
+
+                $notification.post(
+                    "LOLI Labs",
+                    "Token",
+                    "已捕获并保存"
+                );
+            }
         }
     }
 
@@ -107,85 +63,156 @@ if ($script.type === "http-request") {
 }
 
 
-// ========================================
-// Cron：自动签到
-// ========================================
+// =====================================================
+// Cron
+// =====================================================
+
+function request(options) {
+
+    return new Promise((resolve, reject) => {
+
+        $httpClient[
+            options.method.toLowerCase()
+        ](
+            options,
+            (error, response, body) => {
+
+                if (error) {
+                    reject(error);
+                    return;
+                }
+
+                let json;
+
+                try {
+                    json = JSON.parse(body);
+                } catch {
+                    json = {};
+                }
+
+                resolve({
+                    status: response.status,
+                    body: json
+                });
+            }
+        );
+    });
+}
+
+
+// =====================================================
+// 获取 Token
+// =====================================================
+
+function getToken() {
+
+    // 模块参数优先
+    if (
+        typeof $argument !== "undefined" &&
+        $argument
+    ) {
+
+        const match =
+            $argument.match(
+                /(?:^|&)Token=([^&]*)/
+            );
+
+        if (
+            match &&
+            match[1]
+        ) {
+
+            const token =
+                decodeURIComponent(
+                    match[1]
+                ).trim();
+
+            if (token) {
+                return token;
+            }
+        }
+    }
+
+    return $persistentStore.read(KEY);
+}
+
+
+// =====================================================
+// 签到
+// =====================================================
 
 async function signin() {
 
     const token = getToken();
 
+    console.log(
+        "Token:",
+        token ? "存在" : "不存在"
+    );
+
     if (!token) {
 
-        console.log(
-            "没有 LOLI Token"
-        );
-
-        notify(
+        $notification.post(
+            "LOLI Labs",
             "签到失败",
-            "没有找到 LOLI Token，请先打开 LOLI Labs"
+            "没有找到 Token"
         );
 
         $done();
         return;
     }
 
-    console.log(
-        "开始 LOLI 签到"
-    );
 
     try {
 
-        // ----------------------------
-        // 查询签到状态
-        // ----------------------------
+        const result =
+            await request({
 
-        const status = await httpRequest({
-            url: `${LOLI_API}/signin/status`,
-            method: "GET",
+                url:
+                    `${API}/signin`,
 
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Accept": "application/json",
-                "Origin": "https://loli.host",
-                "Referer": "https://loli.host/"
-            }
-        });
+                method:
+                    "POST",
+
+                headers: {
+
+                    "Authorization":
+                        `Bearer ${token}`,
+
+                    "Content-Type":
+                        "application/json",
+
+                    "Accept":
+                        "application/json",
+
+                    "Origin":
+                        "https://loli.host",
+
+                    "Referer":
+                        "https://loli.host/"
+                },
+
+                body:
+                    "{}"
+            });
+
 
         console.log(
-            "签到状态:",
-            JSON.stringify(status.body)
+            "HTTP:",
+            result.status
+        );
+
+        console.log(
+            "Response:",
+            JSON.stringify(
+                result.body
+            )
         );
 
 
-        // ----------------------------
-        // 执行签到
-        // ----------------------------
-
-        const result = await httpRequest({
-            url: `${LOLI_API}/signin`,
-            method: "POST",
-
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "Origin": "https://loli.host",
-                "Referer": "https://loli.host/"
-            },
-
-            body: "{}"
-        });
-
-        console.log(
-            "签到返回:",
-            JSON.stringify(result.body)
-        );
-
-
-        // ----------------------------
+        // ==========================================
         // 成功
-        // ----------------------------
+        // ==========================================
 
         if (
             result.body &&
@@ -195,15 +222,10 @@ async function signin() {
             const data =
                 result.body.data || {};
 
-            const primogems =
-                data.primogems ?? 0;
-
-            const totalDays =
-                data.total_days ?? "?";
-
-            notify(
+            $notification.post(
+                "LOLI Labs",
                 "签到成功",
-                `+${primogems} 原石，累计 ${totalDays} 天`
+                `+${data.primogems ?? 0} 原石，累计 ${data.total_days ?? "?"} 天`
             );
 
             $done();
@@ -211,30 +233,9 @@ async function signin() {
         }
 
 
-        // ----------------------------
-        // 已签到
-        // ----------------------------
-
-        const message =
-            result.body?.message || "";
-
-        if (
-            /already|signed/i.test(message)
-        ) {
-
-            notify(
-                "今日已签到",
-                message
-            );
-
-            $done();
-            return;
-        }
-
-
-        // ----------------------------
+        // ==========================================
         // Token 无效
-        // ----------------------------
+        // ==========================================
 
         if (
             result.status === 401 ||
@@ -243,11 +244,12 @@ async function signin() {
 
             $persistentStore.write(
                 "",
-                TOKEN_KEY
+                KEY
             );
 
-            notify(
-                "Token 已失效",
+            $notification.post(
+                "LOLI Labs",
+                "Token 无效",
                 "请重新打开 LOLI Labs 获取 Token"
             );
 
@@ -256,26 +258,28 @@ async function signin() {
         }
 
 
-        // ----------------------------
-        // 其他错误
-        // ----------------------------
+        // ==========================================
+        // 其他
+        // ==========================================
 
-        notify(
+        $notification.post(
+            "LOLI Labs",
             "签到失败",
-            message ||
+            result.body?.message ||
             `HTTP ${result.status}`
         );
 
-    } catch (error) {
+    } catch (e) {
 
         console.log(
-            "签到异常:",
-            error
+            "ERROR:",
+            String(e)
         );
 
-        notify(
-            "签到异常",
-            String(error)
+        $notification.post(
+            "LOLI Labs",
+            "请求异常",
+            String(e)
         );
     }
 

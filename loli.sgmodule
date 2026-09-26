@@ -1,8 +1,8 @@
 #!name=LOLI Labs 自动签到
-#!desc=每日签到 · 多账号 Token
+#!desc=Yuusei 登录 + OAuth 授权 + LOLI Labs 自动签到
 #!author=Eric
+#!date=2026-09-26
 #!arguments=CronExp:30 7 * * *,Accounts
-#!arguments-desc=CronExp:签到时间 (Cron 表达式)\nAccounts:LOLI Labs Token，多个账号用 , 分隔
-
+#!arguments-desc=CronExp:签到时间 (Cron 表达式)\nAccounts:Yuusei账号，格式为 邮箱:密码，多个账号用 ; 分隔
 [Script]
-LOLI Labs 签到=type=cron,cronexp="{{{CronExp}}}",wake-system=1,timeout=60,script-path=https://raw.githubusercontent.com/zhaolleric/surge/refs/heads/main/loli.js,argument="Accounts={{{Accounts}}}"
+LOLI Labs 自动签到=type=cron,cronexp="{{{CronExp}}}",wake-system=1,timeout=60,script-path=https://raw.githubusercontent.com/zhaolleric/surge/refs/heads/main/loli.js,argument="Accounts={{{Accounts}}}"

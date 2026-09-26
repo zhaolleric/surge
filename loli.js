@@ -1,181 +1,234 @@
-/*
- * Loli Labs 自动签到
- *
- * Token：
- * 仅从
- * GET /api/v1/mails/unread-count
- * 的 Authorization: Bearer xxx 中获取
- *
- * 不调用登录接口
- */
-
 const TOKEN_KEY = "loli_access_token";
 
-const URL_SIGNIN =
+const TOKEN_PATH =
+    "/api/v1/mails/unread-count";
+
+const SIGNIN_URL =
     "https://labs-api.loli.host/api/v1/signin";
 
-const URL_TOKEN =
-    "https://labs-api.loli.host/api/v1/mails/unread-count";
-
-const url = $request && $request.url
-    ? $request.url
-    : "";
-
-const method = $request && $request.method
-    ? $request.method
-    : "";
 
 /*
  * =====================================================
- * 1. HTTP Request 阶段：捕获 Token
+ * 1. 捕获 Token
  * =====================================================
  */
 
-if ($request && method === "GET" && url === URL_TOKEN) {
+if ($script.type === "http-request") {
 
-    const headers = $request.headers || {};
+    const url = $request.url || "";
+    const method = $request.method || "";
 
-    const authorization =
-        headers["Authorization"] ||
-        headers["authorization"] ||
-        "";
+    console.log("[Loli] Token 捕获脚本触发");
+    console.log("[Loli] " + method + " " + url);
 
-    if (/^Bearer\s+/i.test(authorization)) {
+    if (
+        method === "GET" &&
+        url.indexOf(
+            "https://labs-api.loli.host" + TOKEN_PATH
+        ) === 0
+    ) {
 
-        const token =
-            authorization
-                .replace(/^Bearer\s+/i, "")
-                .trim();
+        const headers = $request.headers || {};
 
-        if (token) {
+        let authorization = "";
 
-            $persistentStore.write(
-                token,
-                TOKEN_KEY
-            );
+        for (const key in headers) {
+
+            if (
+                key.toLowerCase() === "authorization"
+            ) {
+                authorization = headers[key];
+                break;
+            }
+        }
+
+        if (
+            authorization &&
+            /^Bearer\s+/i.test(authorization)
+        ) {
+
+            const token =
+                authorization
+                    .replace(/^Bearer\s+/i, "")
+                    .trim();
+
+            if (token) {
+
+                const saved =
+                    $persistentStore.write(
+                        token,
+                        TOKEN_KEY
+                    );
+
+                console.log(
+                    "[Loli] Token 获取成功"
+                );
+
+                console.log(
+                    "[Loli] Token 保存结果: " +
+                    saved
+                );
+
+            } else {
+
+                console.log(
+                    "[Loli] Authorization 为空"
+                );
+            }
+
+        } else {
 
             console.log(
-                "[Loli] Access Token 已更新"
+                "[Loli] 没有发现 Bearer Authorization"
             );
         }
     }
 
-    $done();
+    $done({});
     return;
 }
 
 
 /*
  * =====================================================
- * 2. Cron 阶段：执行签到
+ * 2. 定时签到
  * =====================================================
  */
 
-const token =
-    $persistentStore.read(TOKEN_KEY);
+if ($script.type === "cron") {
 
-if (!token) {
+    const token =
+        $persistentStore.read(TOKEN_KEY);
+
+    if (!token) {
+
+        console.log(
+            "[Loli] 没有保存的 Token"
+        );
+
+        $notification.post(
+            "Loli Labs",
+            "签到失败",
+            "没有 Token，请先打开 loli.host"
+        );
+
+        $done();
+        return;
+    }
+
 
     console.log(
-        "[Loli] 没有 Token，请先打开 loli.host"
+        "[Loli] 开始签到"
     );
 
-    $notification.post(
-        "Loli Labs",
-        "自动签到",
-        "没有找到 Token，请先打开 loli.host"
-    );
 
-    $done();
-    return;
-}
-
-
-const request = {
-    url: URL_SIGNIN,
-
-    method: "POST",
-
-    headers: {
+    const headers = {
         "Authorization": "Bearer " + token,
         "Accept": "*/*",
         "Content-Type": "application/json",
         "Origin": "https://loli.host",
-        "Referer": "https://loli.host/"
-    }
-};
+        "Referer": "https://loli.host/",
+        "User-Agent":
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) " +
+            "AppleWebKit/605.1.15 (KHTML, like Gecko) " +
+            "Version/27.0 Mobile/24A437 Safari/604.1"
+    };
 
 
-$httpClient.post(
-    request,
-    function(error, response, data) {
+    $httpClient.post(
+        {
+            url: SIGNIN_URL,
+            headers: headers
+        },
 
-        if (error) {
+        function(error, response, body) {
+
+            if (error) {
+
+                console.log(
+                    "[Loli] 签到请求错误: " +
+                    error
+                );
+
+                $notification.post(
+                    "Loli Labs",
+                    "签到失败",
+                    String(error)
+                );
+
+                $done();
+                return;
+            }
+
 
             console.log(
-                "[Loli] 签到请求错误：" +
-                error
+                "[Loli] HTTP " +
+                response.status
             );
 
-            $notification.post(
-                "Loli Labs",
-                "签到失败",
-                String(error)
+            console.log(
+                "[Loli] Response: " +
+                body
             );
+
+
+            let message = body || "";
+
+            try {
+
+                const json =
+                    JSON.parse(body);
+
+                message =
+                    json.message ||
+                    json.msg ||
+                    (
+                        json.data &&
+                        (
+                            json.data.message ||
+                            json.data.msg
+                        )
+                    ) ||
+                    body;
+
+            } catch (e) {}
+
+
+            if (
+                response.status >= 200 &&
+                response.status < 300
+            ) {
+
+                $notification.post(
+                    "Loli Labs",
+                    "签到完成",
+                    String(message)
+                );
+
+            } else {
+
+                $notification.post(
+                    "Loli Labs",
+                    "签到失败",
+                    "HTTP " +
+                    response.status +
+                    "\n" +
+                    String(message)
+                );
+            }
 
             $done();
-            return;
         }
+    );
+
+    return;
+}
 
 
-        console.log(
-            "[Loli] HTTP " +
-            response.status +
-            "：" +
-            data
-        );
+/*
+ * =====================================================
+ * 3. 其他情况
+ * =====================================================
+ */
 
-
-        let message = data || "";
-
-        try {
-
-            const json =
-                JSON.parse(data);
-
-            message =
-                json.message ||
-                json.msg ||
-                json.data?.message ||
-                json.data?.msg ||
-                data;
-
-        } catch (_) {}
-
-
-        if (
-            response.status >= 200 &&
-            response.status < 300
-        ) {
-
-            $notification.post(
-                "Loli Labs",
-                "签到成功",
-                String(message)
-            );
-
-        } else {
-
-            $notification.post(
-                "Loli Labs",
-                "签到失败",
-                "HTTP " +
-                response.status +
-                " " +
-                String(message)
-            );
-        }
-
-        $done();
-    }
-);
+$done();

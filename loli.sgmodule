@@ -1,9 +1,17 @@
 #!name=LOLI Labs 自动签到
-#!desc=Yuusei 登录 + OAuth 授权 + LOLI Labs 自动签到
+#!desc=自动获取 Token，每日自动签到
 #!author=Eric
-#!date=2026-09-26
-#!arguments=CronExp:30 7 * * *,Accounts
-#!arguments-desc=CronExp:签到时间 (Cron 表达式)\nAccounts:Yuusei账号，格式为 邮箱:密码，多个账号用 ; 分隔
+#!icon=https://loli.host/favicon.ico
+
+#!arguments CronExp="5 0 * * *"
 
 [Script]
-LOLI Labs 自动签到=type=cron,cronexp="{{{CronExp}}}",wake-system=1,timeout=60,script-path=https://raw.githubusercontent.com/zhaolleric/surge/refs/heads/main/loli.js,argument="Accounts={{{Accounts}}}"
+
+# 自动捕获 LOLI Token
+LOLI Token = type=http-request,pattern=^https://labs-api\.loli\.host/api/v1/,script-path=https://raw.githubusercontent.com/zhaolleric/surge/refs/heads/main/loli.js,timeout=10
+
+# LOLI 自动签到
+LOLI 自动签到 = type=cron,cronexp="{{{CronExp}}}",wake-system=true,script-path=https://raw.githubusercontent.com/zhaolleric/surge/refs/heads/main/loli.js,timeout=30
+
+[MITM]
+hostname = %APPEND% labs-api.loli.host

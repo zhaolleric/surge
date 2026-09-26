@@ -2,7 +2,6 @@
 #!desc=自动获取 Token，每日自动签到
 #!author=Eric
 #!icon=https://loli.host/favicon.ico
-
 #!arguments CronExp="5 0 * * *"
 
 [Script]

@@ -1,13 +1,13 @@
 #!name=Loli Labs 自动签到
-#!desc=仅捕获 loli.host 页面产生的 unread-count 请求中的 Token，然后自动签到
+#!desc=仅从 loli.host 页面请求中捕获 Access Token，并自动签到
 #!author=Eric
 #!homepage=https://loli.host
 #!icon=https://loli.host/favicon.ico
 
+#!argument=CronExp:5 0 * * *:签到时间，Cron 表达式
+
 [Script]
 
-# 仅当访问 loli.host 时捕获 Token
 Loli Token Capture = type=http-request,pattern=^https:\/\/labs-api\.loli\.host\/api\/v1\/mails\/unread-count$,requires-body=0,script-path=https://raw.githubusercontent.com/zhaolleric/surge/refs/heads/main/loli-token.js
 
-# 每天 00:05 自动签到
-Loli Daily Signin = type=cron,cronexp=5 0 * * *,script-path=https://raw.githubusercontent.com/zhaolleric/surge/refs/heads/main/loli-signin.js
+Loli Daily Signin = type=cron,cronexp={{{CronExp}}},script-path=https://raw.githubusercontent.com/zhaolleric/surge/refs/heads/main/loli-signin.js

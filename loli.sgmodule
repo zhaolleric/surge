@@ -1,8 +1,8 @@
-!name=LOLI Labs 自动签到
-#!desc=LOLI Labs 多账号每日自动签到
+#!name=LOLI Labs 自动签到
+#!desc=每日签到 · 多账号 Token
 #!author=Eric
-#!category=签到
-#!arguments=CronExp:30 7 * * *,Accounts:
+#!arguments=CronExp:30 7 * * *,Accounts:Token1
+#!arguments-desc=CronExp:签到时间 (Cron 表达式)\nAccounts:LOLI Labs Token，多个账号用 , 分隔
 
 [Script]
 LOLI Labs 签到=type=cron,cronexp="{{{CronExp}}}",wake-system=1,timeout=60,script-path=https://raw.githubusercontent.com/zhaolleric/surge/refs/heads/main/loli.js,argument="Accounts={{{Accounts}}}"

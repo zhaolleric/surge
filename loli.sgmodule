@@ -4,8 +4,8 @@
 #!homepage=https://loli.host
 #!icon=https://loli.host/favicon.ico
 
-#!arguments=CronExp:5 0 * * *
-#!arguments-desc=签到时间，使用 5 位 Cron 表达式
+#!arguments=CronExp:07 0 * * *
+#!arguments-desc=CronExp:签到时间 (Cron)
 
 [Script]
 

@@ -1,14 +1,10 @@
-#!name=Loli Labs 自动签到
-#!desc=Loli Labs Token 自动捕获 + 自动签到
+#!name=LOLI Labs 自动签到
+#!desc=每日签到 · 多账号 Token
 #!author=Eric
-
-#!arguments=CronExp:07 0 * * *
-#!arguments-desc=CronExp:签到时间 (Cron)
-
-[MITM]
-hostname = %APPEND% labs-api.loli.host
+#!category=签到
+#!date=2026-09-26 00:00:00
+#!arguments=Accounts
+#!arguments-desc=LOLI Labs Token，多个账号用英文逗号 , 分隔
 
 [Script]
-Loli Labs Token = type=http-request,pattern=^https:\/\/labs-api\.loli\.host\/api\/v1\/mails\/unread-count$,script-path=https://raw.githubusercontent.com/zhaolleric/surge/refs/heads/main/loli.js,debug=true
-
-Loli Labs Signin = type=cron,cronexp="{{{CronExp}}}",wake-system=true,script-path=https://raw.githubusercontent.com/zhaolleric/surge/refs/heads/main/loli.js,debug=true
+LOLI Labs 签到=type=cron,cronexp="30 7 * * *",wake-system=1,timeout=60,script-path=https://raw.githubusercontent.com/zhaolleric/surge/refs/heads/main/loli.js,argument="Accounts={{{Accounts}}}"

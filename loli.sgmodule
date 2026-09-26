@@ -1,17 +1,11 @@
 #!name=LOLI Labs 自动签到
-#!desc=自动获取 Token，每日自动签到
+#!desc=自动捕获 LOLI Token + 每日签到
 #!author=Eric
-#!icon=https://loli.host/favicon.ico
-#!arguments=CronExp:07 0 * * *
-#!arguments-desc=CronExp:签到时间 (Cron)
+#!date=2026-09-26
+#!arguments=CronExp:30 7 * * *,Token
+#!arguments-desc=CronExp:签到时间 (Cron 表达式)\nToken:可选，手动填写已有 LOLI Token
 
 [Script]
+LOLI Labs Token=type=http-request,pattern=^https://labs-api\.loli\.host/api/v1/(signin|signin/status),requires-body=0,script-path=https://raw.githubusercontent.com/zhaolleric/surge/refs/heads/main/loli.js
 
-# 自动捕获 LOLI Token
-LOLI Token = type=http-request,pattern=^https://labs-api\.loli\.host/api/v1/,script-path=https://raw.githubusercontent.com/zhaolleric/surge/refs/heads/main/loli.js,timeout=10
-
-# LOLI 自动签到
-LOLI 自动签到 = type=cron,cronexp="{{{CronExp}}}",wake-system=true,script-path=https://raw.githubusercontent.com/zhaolleric/surge/refs/heads/main/loli.js,timeout=30
-
-[MITM]
-hostname = %APPEND% labs-api.loli.host
+LOLI Labs 签到=type=cron,cronexp="{{{CronExp}}}",wake-system=1,timeout=60,script-path=https://raw.githubusercontent.com/zhaolleric/surge/refs/heads/main/loli.js,argument="Token={{{Token}}}"

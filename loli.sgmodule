@@ -1,0 +1,8 @@
+#!name=LOLI Labs 自动签到
+#!desc=LOLI Labs 多账号每日自动签到
+#!author=Eric
+#!category=签到
+#!arguments=CronExp:30 7 * * *,Accounts:
+
+[Script]
+LOLI Labs 签到=type=cron,cronexp="{{{CronExp}}}",wake-system=1,timeout=60,script-path=https://你的GitHub用户名.github.io/你的仓库/loli.js,argument="Accounts={{{Accounts}}}"
